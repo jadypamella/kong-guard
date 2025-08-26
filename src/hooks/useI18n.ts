@@ -1,0 +1,68 @@
+const translations = {
+  en: {
+    'paste_prompt': 'Paste your prompt or code',
+    'scan': 'Scan',
+    'safe': 'Safe',
+    'blocked': 'Blocked',
+    'reasons': 'Reasons',
+    'copy_redacted': 'Copy redacted',
+    'try_again': 'Try again',
+    'logs': 'Logs',
+    'allowed_today': 'Allowed today',
+    'blocked_today': 'Blocked today',
+    'settings': 'Settings',
+    'backend_url': 'Backend URL',
+    'language': 'Language',
+    'service_not_reachable': 'Service not reachable, check Settings',
+    'scan_complete': 'Scan complete',
+    'team': 'Team',
+    'online': 'Online',
+    'offline': 'Offline',
+    'mock_mode': 'Mock mode',
+    'redaction_preview': 'Redaction preview',
+    'example_requests': 'Example requests',
+    'time': 'Time',
+    'status': 'Status',
+    'length': 'Length',
+    'refresh': 'Refresh',
+    'copied': 'Copied',
+    'mock_mode_active': 'Mock mode active',
+  },
+  sv: {
+    'paste_prompt': 'Klistra in din prompt eller kod',
+    'scan': 'Skanna',
+    'safe': 'Säker',
+    'blocked': 'Blockerad',
+    'reasons': 'Skäl',
+    'copy_redacted': 'Kopiera redigerad',
+    'try_again': 'Försök igen',
+    'logs': 'Loggar',
+    'allowed_today': 'Tillåten i dag',
+    'blocked_today': 'Blockerad i dag',
+    'settings': 'Inställningar',
+    'backend_url': 'Backend URL',
+    'language': 'Språk',
+    'service_not_reachable': 'Tjänsten kunde inte nås, kontrollera Inställningar',
+    'scan_complete': 'Skanningen klar',
+    'team': 'Team',
+    'online': 'Online',
+    'offline': 'Offline',
+    'mock_mode': 'Mock läge',
+    'redaction_preview': 'Redigeringsförhandsvisning',
+    'example_requests': 'Exempel förfrågningar',
+    'time': 'Tid',
+    'status': 'Status',
+    'length': 'Längd',
+    'refresh': 'Uppdatera',
+    'copied': 'Kopierat',
+    'mock_mode_active': 'Mock läge aktivt',
+  },
+};
+
+export function useI18n(language: 'en' | 'sv') {
+  const t = (key: keyof typeof translations.en) => {
+    return translations[language][key] || key;
+  };
+
+  return { t };
+}

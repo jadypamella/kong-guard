@@ -1,73 +1,58 @@
-# Welcome to your Lovable project
+# KongGuard
 
-## Project info
+A comprehensive sensitive data leak detection system with dashboard, API scanner, MCP server, and Kong Gateway plugin.
 
-**URL**: https://lovable.dev/projects/26ec84bd-8e76-48b1-a02c-ee6d48155e22
+## Components
 
-## How can I edit this code?
+- **Dashboard**: React frontend for scanning text and viewing logs
+- **API**: Node.js Express service that scans text for secrets
+- **MCP Server**: TypeScript MCP server with scan_prompt tool
+- **Kong Plugin**: Lua plugin that blocks AI requests containing secrets
+- **Infrastructure**: Docker Compose setup for local development
 
-There are several ways of editing your application.
+## Quick Start
 
-**Use Lovable**
+### Frontend Dashboard
+The dashboard is already running in your development environment. It provides:
+- Text scanning interface with team assignment
+- Real-time logs with auto-refresh
+- Settings for backend configuration and mock mode
+- Multi-language support (English/Swedish)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/26ec84bd-8e76-48b1-a02c-ee6d48155e22) and start prompting.
+### Backend Services
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. **Clone and test the API**:
+```bash
+cd api
+npm install
+npm test
 ```
 
-**Edit a file directly in GitHub**
+2. **Run the full backend stack**:
+```bash
+cd infra
+docker compose up -d
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. **Verify the setup**:
+- Visit http://localhost:8080/logs to check API
+- Test scanning: `POST http://localhost:8080/scan` with payload containing "password"
 
-**Use GitHub Codespaces**
+## Architecture
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **API Service**: Scans text using regex patterns, maintains in-memory logs
+- **MCP Server**: Exposes scan functionality as MCP tool
+- **Kong Plugin**: Intercepts requests, scans content, logs decisions
+- **Dashboard**: User interface for manual scanning and monitoring
 
-## What technologies are used for this project?
+## Development
 
-This project is built with:
+The dashboard connects to the backend API and will automatically detect when services are running. Switch off mock mode in Settings to connect to the real backend.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Security Patterns Detected
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/26ec84bd-8e76-48b1-a02c-ee6d48155e22) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Password assignments
+- JWT tokens  
+- AWS access keys (AKIA...)
+- AWS secrets (40-char base64)
+- Private key blocks

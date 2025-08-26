@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: ../api
+    container_name: kongguard-api
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "8080:8080"
+
+  mcp:
+    build:
+      context: ../mcp
+    container_name: kongguard-mcp
+    environment:
+      - SCANNER_BASE_URL=http://api:8080
+    ports:
+      - "7070:7070"
+    depends_on:
+      api:
+        condition: service_started
+
+  kong:
+    build:
+      context: .
+      dockerfile: kong.Dockerfile
+    container_name: kongguard-kong
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/etc/kong/kong.yaml
+      - KONG_PLUGINS=bundled,secret-guard
+    volumes:
+      - ../plugin/kong-plugin-secret-guard/handler.lua:/usr/local/share/lua/5.1/kong/plugins/secret-guard/handler.lua:ro
+      - ../plugin/kong-plugin-secret-guard/schema.lua:/usr/local/share/lua/5.1/kong/plugins/secret-guard/schema.lua:ro
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    depends_on:
+      api:
+        condition: service_started

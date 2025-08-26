@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: KongGuard API
+  version: 1.0.0
+paths:
+  /scan:
+    post:
+      summary: Scan text for secrets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                team:
+                  type: string
+              required: [text]
+      responses:
+        "200":
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  reasons:
+                    type: array
+                    items: { type: string }
+                  redactions:
+                    type: object
+  /logs:
+    get:
+      summary: Get recent scan decisions
+      responses:
+        "200":
+          description: Logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    ts: { type: string }
+                    ok: { type: boolean }
+                    reasons:
+                      type: array
+                      items: { type: string }
+                    length: { type: number }
+                    team: { type: string }
+    post:
+      summary: Append a decision log entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ts: { type: string }
+                ok: { type: boolean }
+                reasons:
+                  type: array
+                  items: { type: string }
+                team: { type: string }
+      responses:
+        "200":
+          description: Acknowledged

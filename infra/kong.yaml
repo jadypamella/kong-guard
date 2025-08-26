@@ -1,0 +1,11 @@
+_format_version: "3.0"
+services:
+  - name: ai
+    url: http://example-ai-upstream.invalid
+    routes:
+      - name: ai-route
+        paths: ["/ai"]
+    plugins:
+      - name: secret-guard
+        config:
+          log_url: http://api:8080/logs

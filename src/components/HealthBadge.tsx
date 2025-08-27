@@ -13,18 +13,6 @@ export function HealthBadge({ isOnline, language }: HealthBadgeProps) {
       <StatusPill status="safe" size="sm">
         Online
       </StatusPill>
-      {!isOnline && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Health check failed. Verify CORS in Konnect.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
     </div>
   );
 }

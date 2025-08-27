@@ -231,7 +231,7 @@ DB_PASSWORD=AnotherSecret123`
   const getStatusText = () => {
     if (isScanning) return 'Scanning...';
     if (isSending) return 'Sending...';
-    if (scanResult?.ok) return 'Allowed';
+    if (scanResult?.ok) return 'Success';
     if (scanResult?.ok === false) return 'Blocked';
     return null;
   };
@@ -251,39 +251,6 @@ DB_PASSWORD=AnotherSecret123`
 
   return (
     <div className="space-y-6">
-      {/* Example Requests */}
-      <Card className="shadow-card border-card-border">
-        <Collapsible>
-          <CollapsibleTrigger className="w-full">
-            <CardHeader className="hover:bg-muted/50 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Code className="h-5 w-5 text-primary" />
-                  Example requests
-                </span>
-                <ChevronDown className="h-4 w-4" />
-              </CardTitle>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              <div className="grid gap-3">
-                {examples.map((example, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className="justify-start h-auto p-4"
-                    onClick={() => handleExampleClick(example.content)}
-                  >
-                    <example.icon className="h-4 w-4 mr-2 shrink-0" />
-                    <span className="text-left">{example.label}</span>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
 
       {/* Scan Card */}
       <Card className="shadow-card border-card-border">
@@ -443,6 +410,19 @@ DB_PASSWORD=AnotherSecret123`
               Example requests
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 mt-3">
+              <div className="grid gap-3 mb-6">
+                {examples.map((example, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="justify-start h-auto p-4"
+                    onClick={() => handleExampleClick(example.content)}
+                  >
+                    <example.icon className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="text-left">{example.label}</span>
+                  </Button>
+                ))}
+              </div>
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">cURL</h4>
                 <div className="relative">

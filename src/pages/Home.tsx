@@ -11,7 +11,7 @@ import { ReasonBadge } from '@/components/ReasonBadge';
 import { CopyButton } from '@/components/CopyButton';
 import { useSettings } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/use-toast';
-import { callGateway, extractGatewayAnswer, type GatewayResponse } from '@/lib/gateway';
+import { callGatewayTemplate, extractGatewayAnswer, type GatewayResponse } from '@/lib/gateway';
 
 // Local scanner implementation
 const scanTextLocal = (text: string) => {
@@ -72,7 +72,7 @@ export default function Home() {
       if (result.ok && settings.gatewayUrl && settings.gatewayPath) {
         // Safe to call gateway with original text
         try {
-          const gatewayResponse = await callGateway(
+          const gatewayResponse = await callGatewayTemplate(
             settings.gatewayUrl,
             settings.gatewayPath,
             text
@@ -139,7 +139,7 @@ export default function Home() {
         });
       }
 
-      const gatewayResponse = await callGateway(
+      const gatewayResponse = await callGatewayTemplate(
         settings.gatewayUrl,
         settings.gatewayPath,
         redactedText

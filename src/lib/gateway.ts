@@ -21,30 +21,24 @@ export interface GatewayResponse {
   [key: string]: any;
 }
 
-export async function callGateway(
+export async function callGatewayTemplate(
   gatewayUrl: string,
   gatewayPath: string,
   codeText: string
-): Promise<{ ok: boolean; status: number; data: any; text: string }> {
+) {
   const payload = {
     messages: "{template://CodeStanderdRule}",
     properties: { code: codeText }
   };
 
-  const resp = await fetch(`${gatewayUrl}/${gatewayPath}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await fetch(`${gatewayUrl}/${gatewayPath}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
-  const data = await resp.json().catch(() => ({} as any));
-
-  const text =
-    data?.choices?.[0]?.message?.content ??
-    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') ??
-    JSON.stringify(data);
-
-  return { ok: resp.ok, status: resp.status, data, text };
+  const data = await res.json().catch(() => ({} as any));
+  return { ok: res.ok, status: res.status, data };
 }
 
 export async function checkGatewayHealth(gatewayUrl: string, gatewayPath: string): Promise<boolean> {

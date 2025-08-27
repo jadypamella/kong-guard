@@ -24,23 +24,17 @@ export interface GatewayResponse {
 export async function callGateway(
   gatewayUrl: string,
   gatewayPath: string,
-  systemPrompt: string,
-  userText: string,
-  includeSecret: boolean,
-  contextSecret: string
+  codeText: string
 ): Promise<{ ok: boolean; status: number; data: any; text: string }> {
-  const messages: GatewayMessage[] = [
-    { role: 'system', content: systemPrompt || 'You are KongGuard' },
-    { role: 'user', content: userText },
-    ...(includeSecret && contextSecret
-      ? [{ role: 'user' as const, content: `context secret: ${contextSecret}` }]
-      : []),
-  ];
+  const payload = {
+    messages: "{template://CodeStanderdRule}",
+    properties: { code: codeText }
+  };
 
   const resp = await fetch(`${gatewayUrl}/${gatewayPath}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages })
+    body: JSON.stringify(payload)
   });
 
   const data = await resp.json().catch(() => ({} as any));

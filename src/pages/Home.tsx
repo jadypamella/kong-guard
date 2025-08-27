@@ -75,10 +75,7 @@ export default function Home() {
           const gatewayResponse = await callGateway(
             settings.gatewayUrl,
             settings.gatewayPath,
-            settings.systemPrompt,
-            text,
-            settings.includeContextSecret,
-            settings.contextSecret
+            text
           );
           setGatewayResult(gatewayResponse.data);
           
@@ -145,10 +142,7 @@ export default function Home() {
       const gatewayResponse = await callGateway(
         settings.gatewayUrl,
         settings.gatewayPath,
-        settings.systemPrompt,
-        redactedText,
-        settings.includeContextSecret,
-        redactedContextSecret
+        redactedText
       );
       setGatewayResult(gatewayResponse.data);
       

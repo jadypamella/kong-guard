@@ -100,10 +100,8 @@ export default function Home() {
         scanTarget = `${text} ${settings.contextSecret}`;
       }
 
-      // Use local scanner with scanTarget
-      const result = settings.baseUrl 
-        ? await scanText(settings.baseUrl, { text: scanTarget, team: team || undefined }, settings.mock)
-        : scanTextLocal(scanTarget);
+      // Always use local scanner (no more backend dependency)
+      const result = scanTextLocal(scanTarget);
       
       setScanResult(result);
       
@@ -114,8 +112,8 @@ export default function Home() {
             settings.gatewayUrl,
             settings.gatewayPath,
             text,
-            settings.contextSecret,
-            settings.includeContextSecret
+            settings.includeContextSecret,
+            settings.contextSecret
           );
           setGatewayResult(gatewayResponse.data);
           
@@ -165,8 +163,8 @@ export default function Home() {
         settings.gatewayUrl,
         settings.gatewayPath,
         redactedText,
-        redactedSecret,
-        settings.includeContextSecret
+        settings.includeContextSecret,
+        redactedSecret
       );
       setGatewayResult(gatewayResponse.data);
       toast({

@@ -25,17 +25,16 @@ export async function callGateway(
   gatewayUrl: string,
   gatewayPath: string,
   userText: string,
-  contextSecret: string,
-  includeSecret: boolean
+  includeSecret: boolean,
+  contextSecret: string
 ): Promise<{ ok: boolean; status: number; data: any; text: string }> {
   const messages: GatewayMessage[] = [
     { role: 'system', content: 'You are KongGuard' },
     { role: 'user', content: userText },
+    ...(includeSecret && contextSecret
+      ? [{ role: 'user' as const, content: `context secret: ${contextSecret}` }]
+      : []),
   ];
-
-  if (includeSecret && contextSecret) {
-    messages.push({ role: 'user', content: `context secret: ${contextSecret}` });
-  }
 
   const resp = await fetch(`${gatewayUrl}/${gatewayPath}`, {
     method: 'POST',

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -13,9 +14,10 @@ import { useSettings } from '@/hooks/useSettings';
 import { useI18n } from '@/hooks/useI18n';
 import { useToast } from '@/hooks/use-toast';
 import { scanText, getLogs, type ScanResponse, type LogEntry } from '@/lib/api';
+import { callGateway, extractGatewayAnswer, type GatewayResponse } from '@/lib/gateway';
 
 export default function Home() {
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const { t } = useI18n(settings.language);
   const { toast } = useToast();
 
@@ -23,6 +25,7 @@ export default function Home() {
   const [team, setTeam] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
+  const [gatewayResult, setGatewayResult] = useState<GatewayResponse | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
@@ -52,17 +55,79 @@ export default function Home() {
     if (!text.trim()) return;
 
     setIsScanning(true);
+    setGatewayResult(null);
+    
     try {
-      const result = await scanText(settings.baseUrl, { text, team: team || undefined }, settings.mock);
+      // Build scan target including context secret if enabled
+      let scanTarget = text;
+      if (settings.includeContextSecret && settings.contextSecret) {
+        scanTarget = `${text} ${settings.contextSecret}`;
+      }
+
+      const result = await scanText(settings.baseUrl, { text: scanTarget, team: team || undefined }, settings.mock);
       setScanResult(result);
+      
+      // If scan passes, call gateway with original text
+      if (result.ok) {
+        try {
+          const gatewayResponse = await callGateway(
+            settings.gatewayUrl,
+            settings.gatewayPath,
+            text,
+            settings.contextSecret,
+            settings.includeContextSecret
+          );
+          setGatewayResult(gatewayResponse);
+        } catch (gatewayError: any) {
+          toast({
+            title: 'Gateway Error',
+            description: gatewayError.message.includes('CORS') 
+              ? 'CORS error: Enable CORS plugin on your service in Konnect for this origin, allow POST/OPTIONS methods and Content-Type header.'
+              : gatewayError.message,
+            variant: 'destructive',
+          });
+        }
+      }
+      
       toast({
         title: t('scan_complete'),
       });
+      
       // Reload logs after scan
       loadLogs();
     } catch (error) {
       toast({
         title: t('service_not_reachable'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleSendRedacted = async () => {
+    if (!scanResult || !scanResult.redactions) return;
+
+    setIsScanning(true);
+    try {
+      const redactedText = applyRedactions(text, scanResult.redactions);
+      const gatewayResponse = await callGateway(
+        settings.gatewayUrl,
+        settings.gatewayPath,
+        redactedText,
+        settings.contextSecret,
+        settings.includeContextSecret
+      );
+      setGatewayResult(gatewayResponse);
+      toast({
+        title: 'Redacted text sent successfully',
+      });
+    } catch (gatewayError: any) {
+      toast({
+        title: 'Gateway Error',
+        description: gatewayError.message.includes('CORS') 
+          ? 'CORS error: Enable CORS plugin on your service in Konnect for this origin, allow POST/OPTIONS methods and Content-Type header.'
+          : gatewayError.message,
         variant: 'destructive',
       });
     } finally {
@@ -115,7 +180,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="flex gap-4">
+            <div className="flex gap-4">
             <div className="flex-1">
               <label className="text-sm font-medium text-muted-foreground">
                 {t('team')} (optional)
@@ -125,6 +190,28 @@ export default function Home() {
                 onChange={(e) => setTeam(e.target.value)}
                 placeholder={t('team')}
               />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">
+              Context secret (optional)
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="password"
+                value={settings.contextSecret}
+                onChange={(e) => updateSettings({ contextSecret: e.target.value })}
+                placeholder="Enter context secret"
+                className="flex-1"
+              />
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={settings.includeContextSecret}
+                  onCheckedChange={(checked) => updateSettings({ includeContextSecret: checked })}
+                />
+                <span className="text-sm text-muted-foreground">Include in prompt</span>
+              </div>
             </div>
           </div>
 
@@ -184,6 +271,9 @@ export default function Home() {
                       <Button variant="outline" size="sm" onClick={handleTryAgain}>
                         {t('try_again')}
                       </Button>
+                      <Button variant="default" size="sm" onClick={handleSendRedacted}>
+                        Send redacted
+                      </Button>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
@@ -201,6 +291,33 @@ export default function Home() {
                 </CollapsibleContent>
               </Collapsible>
             </div>
+          )}
+
+          {gatewayResult && (
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="text-lg">AI Response</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-muted p-4 rounded-md">
+                  <pre className="whitespace-pre-wrap text-sm">
+                    {extractGatewayAnswer(gatewayResult)}
+                  </pre>
+                </div>
+                
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
+                    <ChevronDown className="h-4 w-4" />
+                    Raw Gateway Response
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <pre className="bg-muted p-3 rounded-md text-xs overflow-auto">
+                      {JSON.stringify(gatewayResult, null, 2)}
+                    </pre>
+                  </CollapsibleContent>
+                </Collapsible>
+              </CardContent>
+            </Card>
           )}
 
           <Collapsible>
@@ -243,6 +360,54 @@ export default function Home() {
                   <div className="absolute top-2 right-2">
                     <CopyButton
                       text={`fetch('${settings.baseUrl}/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'your prompt here', team: 'optional' }) }).then(res => res.json())`}
+                      language={settings.language}
+                      variant="ghost"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Gateway - cURL</h4>
+                <div className="relative">
+                  <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
+{`curl -X POST "${settings.gatewayUrl}/${settings.gatewayPath}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "messages": [
+      { "role": "system", "content": "You are KongGuard" },
+      { "role": "user", "content": "What is 1 + 1?" }
+    ]
+  }'`}
+                  </pre>
+                  <div className="absolute top-2 right-2">
+                    <CopyButton
+                      text={`curl -X POST "${settings.gatewayUrl}/${settings.gatewayPath}" -H "Content-Type: application/json" -d '{"messages":[{"role":"system","content":"You are KongGuard"},{"role":"user","content":"What is 1 + 1?"}]}'`}
+                      language={settings.language}
+                      variant="ghost"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Gateway - JavaScript</h4>
+                <div className="relative">
+                  <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
+{`fetch('${settings.gatewayUrl}/${settings.gatewayPath}', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    messages: [
+      { role: 'system', content: 'You are KongGuard' },
+      { role: 'user', content: 'What is 1 + 1?' }
+    ]
+  })
+}).then(res => res.json())`}
+                  </pre>
+                  <div className="absolute top-2 right-2">
+                    <CopyButton
+                      text={`fetch('${settings.gatewayUrl}/${settings.gatewayPath}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'system', content: 'You are KongGuard' }, { role: 'user', content: 'What is 1 + 1?' }] }) }).then(res => res.json())`}
                       language={settings.language}
                       variant="ghost"
                     />

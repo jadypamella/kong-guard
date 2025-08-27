@@ -4,12 +4,20 @@ export interface Settings {
   baseUrl: string;
   language: 'en' | 'sv';
   mock: boolean;
+  gatewayUrl: string;
+  gatewayPath: string;
+  includeContextSecret: boolean;
+  contextSecret: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   baseUrl: 'http://localhost:8000',
   language: 'en',
   mock: true,
+  gatewayUrl: 'https://kong-f156c191deeusgnly.kongcloud.dev',
+  gatewayPath: 'validate-code',
+  includeContextSecret: false,
+  contextSecret: '',
 };
 
 export function useSettings() {

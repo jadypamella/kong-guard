@@ -11,6 +11,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { useI18n } from '@/hooks/useI18n';
 import { useToast } from '@/hooks/use-toast';
 import { checkHealth } from '@/lib/api';
+import { checkGatewayHealth } from '@/lib/gateway';
 
 export default function Settings() {
   const { settings, updateSettings } = useSettings();
@@ -20,7 +21,12 @@ export default function Settings() {
   const [baseUrl, setBaseUrl] = useState(settings.baseUrl);
   const [mock, setMock] = useState(settings.mock);
   const [language, setLanguage] = useState(settings.language);
+  const [gatewayUrl, setGatewayUrl] = useState(settings.gatewayUrl);
+  const [gatewayPath, setGatewayPath] = useState(settings.gatewayPath);
+  const [includeContextSecret, setIncludeContextSecret] = useState(settings.includeContextSecret);
+  const [contextSecret, setContextSecret] = useState(settings.contextSecret);
   const [isOnline, setIsOnline] = useState(false);
+  const [isGatewayOnline, setIsGatewayOnline] = useState(false);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   const checkServiceHealth = async () => {
@@ -40,15 +46,34 @@ export default function Settings() {
     }
   };
 
+  const checkGatewayServiceHealth = async () => {
+    try {
+      const online = await checkGatewayHealth(gatewayUrl, gatewayPath);
+      setIsGatewayOnline(online);
+    } catch {
+      setIsGatewayOnline(false);
+    }
+  };
+
   useEffect(() => {
     checkServiceHealth();
   }, [baseUrl, mock]);
+
+  useEffect(() => {
+    checkGatewayServiceHealth();
+    const interval = setInterval(checkGatewayServiceHealth, 10000);
+    return () => clearInterval(interval);
+  }, [gatewayUrl, gatewayPath]);
 
   const handleSave = () => {
     updateSettings({
       baseUrl,
       mock,
       language,
+      gatewayUrl,
+      gatewayPath,
+      includeContextSecret,
+      contextSecret,
     });
     
     toast({
@@ -60,7 +85,11 @@ export default function Settings() {
   const hasChanges = 
     baseUrl !== settings.baseUrl ||
     mock !== settings.mock ||
-    language !== settings.language;
+    language !== settings.language ||
+    gatewayUrl !== settings.gatewayUrl ||
+    gatewayPath !== settings.gatewayPath ||
+    includeContextSecret !== settings.includeContextSecret ||
+    contextSecret !== settings.contextSecret;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -112,18 +141,82 @@ export default function Settings() {
             </Select>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-card-border">
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Service Status</p>
+          <div className="space-y-4 pt-4 border-t border-card-border">
+            <h3 className="text-lg font-medium">Gateway Settings</h3>
+            
+            <div className="space-y-2">
+              <Label htmlFor="gatewayUrl">Gateway URL</Label>
+              <Input
+                id="gatewayUrl"
+                value={gatewayUrl}
+                onChange={(e) => setGatewayUrl(e.target.value)}
+                placeholder="https://kong-f156c191deeusgnly.kongcloud.dev"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gatewayPath">Gateway Path</Label>
+              <Input
+                id="gatewayPath"
+                value={gatewayPath}
+                onChange={(e) => setGatewayPath(e.target.value)}
+                placeholder="validate-code"
+              />
               <p className="text-sm text-muted-foreground">
-                Current backend connectivity
+                Path without leading slash
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              {isCheckingHealth && (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              )}
-              <HealthBadge isOnline={isOnline} language={language} />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="includeContextSecret">Include Context Secret</Label>
+                <p className="text-sm text-muted-foreground">
+                  Add context secret to AI prompts
+                </p>
+              </div>
+              <Switch
+                id="includeContextSecret"
+                checked={includeContextSecret}
+                onCheckedChange={setIncludeContextSecret}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contextSecret">Context Secret</Label>
+              <Input
+                id="contextSecret"
+                type="password"
+                value={contextSecret}
+                onChange={(e) => setContextSecret(e.target.value)}
+                placeholder="Enter context secret (optional)"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-card-border">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Backend Service Status</p>
+                <p className="text-sm text-muted-foreground">
+                  Current backend connectivity
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isCheckingHealth && (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                )}
+                <HealthBadge isOnline={isOnline} language={language} />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Gateway Status</p>
+                <p className="text-sm text-muted-foreground">
+                  Current AI gateway connectivity
+                </p>
+              </div>
+              <HealthBadge isOnline={isGatewayOnline} language={language} />
             </div>
           </div>
 

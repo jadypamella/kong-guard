@@ -43,6 +43,16 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
 
   // Check for any error
   if (gatewayResult.error) {
+    const getErrorMessage = (errorMessage: string) => {
+      if (errorMessage === 'bad request') {
+        return 'You cannot share secrets and passwords with LLMs.';
+      }
+      if (errorMessage.includes('Strawberry business secrets')) {
+        return 'You cannot share Strawberry business secrets with LLMs.';
+      }
+      return errorMessage;
+    };
+
     return (
       <Card className="mt-4 border-red-200">
         <CardContent className="p-6">
@@ -51,7 +61,7 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
             <div>
               <p className="font-bold text-red-600">Error</p>
               <p className="text-sm text-red-700 mt-1">
-                {gatewayResult.error.message}
+                {getErrorMessage(gatewayResult.error.message)}
               </p>
             </div>
           </div>

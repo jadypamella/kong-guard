@@ -119,14 +119,32 @@ DB_PASSWORD=AnotherSecret123`
 
   const getStatusText = () => {
     if (isScanning) return 'Scanning...';
+    
+    // Check for error responses or error messages in the regular response
     if (gatewayResult?.error) return 'Error';
+    if (gatewayResult) {
+      const response = extractGatewayAnswer(gatewayResult);
+      const isErrorResponse = response.includes('You cannot share Strawberry business secrets with LLMs') ||
+                             response.includes('You cannot share secrets and passwords with LLMs');
+      if (isErrorResponse) return 'Error';
+    }
+    
     if (scanResult?.ok) return 'Analyzed';
     return null;
   };
 
   const getStatusType = () => {
     if (isScanning) return 'neutral';
+    
+    // Check for error responses or error messages in the regular response
     if (gatewayResult?.error) return 'error';
+    if (gatewayResult) {
+      const response = extractGatewayAnswer(gatewayResult);
+      const isErrorResponse = response.includes('You cannot share Strawberry business secrets with LLMs') ||
+                             response.includes('You cannot share secrets and passwords with LLMs');
+      if (isErrorResponse) return 'error';
+    }
+    
     if (scanResult?.ok) return 'safe';
     return 'neutral';
   };

@@ -41,16 +41,25 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
 
   if (!gatewayResult) return null;
 
+  const responseText = extractGatewayAnswer(gatewayResult);
+  
+  // Check if response contains error messages that should be treated as errors
+  const isErrorResponse = responseText.includes('You cannot share Strawberry business secrets with LLMs') ||
+                         responseText.includes('You cannot share secrets and passwords with LLMs');
+
   // Check for any error
-  if (gatewayResult.error) {
-    const getErrorMessage = (errorMessage: string) => {
-      if (errorMessage === 'bad request') {
+  if (gatewayResult.error || isErrorResponse) {
+    const getErrorMessage = () => {
+      if (isErrorResponse) {
+        return responseText;
+      }
+      if (gatewayResult.error?.message === 'bad request') {
         return 'You cannot share secrets and passwords with LLMs.';
       }
-      if (errorMessage.includes('Strawberry business secrets')) {
+      if (gatewayResult.error?.message.includes('Strawberry business secrets')) {
         return 'You cannot share Strawberry business secrets with LLMs.';
       }
-      return errorMessage;
+      return gatewayResult.error?.message || 'An error occurred';
     };
 
     return (
@@ -61,7 +70,7 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
             <div>
               <p className="font-bold text-red-600">Error</p>
               <p className="text-sm text-red-700 mt-1">
-                {getErrorMessage(gatewayResult.error.message)}
+                {getErrorMessage()}
               </p>
             </div>
           </div>
@@ -69,8 +78,6 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
       </Card>
     );
   }
-
-  const responseText = extractGatewayAnswer(gatewayResult);
   
   // Parse response for analysis
   const lines = responseText.split('\n').filter(line => line.trim());

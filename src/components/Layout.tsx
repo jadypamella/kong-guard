@@ -1,9 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Settings } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { HealthBadge } from './HealthBadge';
 import { useSettings } from '@/hooks/useSettings';
-import { useI18n } from '@/hooks/useI18n';
-import { checkHealth } from '@/lib/api';
+import { checkGatewayHealth } from '@/lib/gateway';
 import { useState, useEffect } from 'react';
 
 interface LayoutProps {
@@ -13,23 +12,22 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { settings } = useSettings();
-  const { t } = useI18n(settings.language);
   const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
-      if (settings.mock) {
-        setIsOnline(true);
-        return;
+      if (settings.gatewayUrl && settings.gatewayPath) {
+        const online = await checkGatewayHealth(settings.gatewayUrl, settings.gatewayPath);
+        setIsOnline(online);
+      } else {
+        setIsOnline(false);
       }
-      const online = await checkHealth(settings.baseUrl);
-      setIsOnline(online);
     };
 
     checkStatus();
     const interval = setInterval(checkStatus, 10000);
     return () => clearInterval(interval);
-  }, [settings.baseUrl, settings.mock]);
+  }, [settings.gatewayUrl, settings.gatewayPath]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,18 +59,13 @@ export function Layout({ children }: LayoutProps) {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('settings')}
+                  Settings
                 </Link>
               </nav>
             </div>
 
             <div className="flex items-center space-x-4">
-              {settings.mock && (
-                <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
-                  {t('mock_mode_active')}
-                </span>
-              )}
-              <HealthBadge isOnline={isOnline} language={settings.language} />
+              <HealthBadge isOnline={isOnline} language="en" />
             </div>
           </div>
         </div>

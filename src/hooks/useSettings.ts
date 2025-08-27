@@ -1,21 +1,17 @@
 import { useState, useEffect } from 'react';
 
 export interface Settings {
-  baseUrl: string;
-  language: 'en' | 'sv';
-  mock: boolean;
   gatewayUrl: string;
   gatewayPath: string;
+  systemPrompt: string;
   includeContextSecret: boolean;
   contextSecret: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  baseUrl: '',
-  language: 'en',
-  mock: false,
   gatewayUrl: 'https://kong-f156c191deeusgnly.kongcloud.dev',
   gatewayPath: 'validate-code',
+  systemPrompt: 'You are KongGuard',
   includeContextSecret: false,
   contextSecret: '',
 };

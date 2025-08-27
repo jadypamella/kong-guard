@@ -24,12 +24,13 @@ export interface GatewayResponse {
 export async function callGateway(
   gatewayUrl: string,
   gatewayPath: string,
+  systemPrompt: string,
   userText: string,
   includeSecret: boolean,
   contextSecret: string
 ): Promise<{ ok: boolean; status: number; data: any; text: string }> {
   const messages: GatewayMessage[] = [
-    { role: 'system', content: 'You are KongGuard' },
+    { role: 'system', content: systemPrompt || 'You are KongGuard' },
     { role: 'user', content: userText },
     ...(includeSecret && contextSecret
       ? [{ role: 'user' as const, content: `context secret: ${contextSecret}` }]
@@ -54,8 +55,8 @@ export async function callGateway(
 
 export async function checkGatewayHealth(gatewayUrl: string, gatewayPath: string): Promise<boolean> {
   try {
-    const res = await fetch(`${gatewayUrl}/${gatewayPath}`, { method: 'OPTIONS' });
-    return res.ok || res.status === 204 || res.status === 405;
+    const r = await fetch(`${gatewayUrl}/${gatewayPath}`, { method: 'OPTIONS' });
+    return r.ok || r.status === 204 || r.status === 405;
   } catch {
     return false;
   }

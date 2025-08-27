@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 interface StatusPillProps {
-  status: 'safe' | 'blocked';
+  status: 'safe' | 'blocked' | 'neutral';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -19,9 +19,10 @@ export function StatusPill({ status, size = 'md', children }: StatusPillProps) {
         {
           'bg-success text-success-foreground': status === 'safe',
           'bg-danger text-danger-foreground': status === 'blocked',
+          'bg-muted text-muted-foreground': status === 'neutral',
         }
       )}
-      aria-label={status === 'safe' ? 'Safe' : 'Blocked'}
+      aria-label={status === 'safe' ? 'Safe' : status === 'blocked' ? 'Blocked' : 'Neutral'}
     >
       {children}
     </div>

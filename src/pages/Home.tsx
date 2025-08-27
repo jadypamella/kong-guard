@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Scan, RefreshCw, ChevronDown } from 'lucide-react';
+import { Scan, RefreshCw, ChevronDown, Code, FileText, GitBranch } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
 import { ReasonBadge } from '@/components/ReasonBadge';
 import { CopyButton } from '@/components/CopyButton';
@@ -44,9 +44,11 @@ const scanTextLocal = (text: string) => {
 export default function Home() {
   const { settings, updateSettings } = useSettings();
   const { toast } = useToast();
+  const scanButtonRef = useRef<HTMLButtonElement>(null);
 
   const [text, setText] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const [gatewayResult, setGatewayResult] = useState<GatewayResponse | null>(null);
   const [redactedText, setRedactedText] = useState('');
@@ -127,6 +129,7 @@ export default function Home() {
   const handleSendRedacted = async () => {
     if (!redactedText || !settings.gatewayUrl || !settings.gatewayPath) return;
 
+    setIsSending(true);
     try {
       // Build redacted context secret if needed
       let redactedContextSecret = settings.contextSecret;
@@ -169,11 +172,119 @@ export default function Home() {
         description: message,
         variant: 'destructive',
       });
+    } finally {
+      setIsSending(false);
     }
+  };
+
+  const examples = [
+    {
+      label: 'C Sharp class',
+      icon: Code,
+      content: `using System;
+using System.Collections.Generic;
+using System.Linq;
+
+public class Myclass
+{
+    private string name;
+    public int Age;
+    public static int CONSTANT_VALUE = 100;
+
+    public void mymethod(string input)
+    {
+        var result = "Hello, " + input;
+        Console.WriteLine(result);
+    }
+}`
+    },
+    {
+      label: 'Python file with secrets',
+      icon: FileText,
+      content: `import os
+DB_URL = "postgres://admin:SuperSecretP@ssw0rd@db.example.com:5432/prod"
+REDIS_URL = "redis://default:TopSecret123@cache.example.com:6379"
+API_KEY = "ghp_FAKE1234567890ABCDEFG"
+def connect():
+    pass`
+    },
+    {
+      label: 'Repo file with leaked env',
+      icon: GitBranch,
+      content: `# .env from repo
+OPENAI_API_KEY=sk_FAKE1234567890
+AWS_ACCESS_KEY_ID=AKIAFAKE1234567890
+AWS_SECRET_ACCESS_KEY=abcDEF1234567890xyzABC1234567890abcdEF12
+DB_PASSWORD=AnotherSecret123`
+    }
+  ];
+
+  const handleExampleClick = (content: string) => {
+    setText(content);
+    // Focus scan button after a short delay
+    setTimeout(() => {
+      scanButtonRef.current?.focus();
+      scanButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const getStatusText = () => {
+    if (isScanning) return 'Scanning...';
+    if (isSending) return 'Sending...';
+    if (scanResult?.ok) return 'Allowed';
+    if (scanResult?.ok === false) return 'Blocked';
+    return null;
+  };
+
+  const getStatusType = () => {
+    if (isScanning || isSending) return 'neutral';
+    if (scanResult?.ok) return 'safe';
+    if (scanResult?.ok === false) return 'blocked';
+    return 'neutral';
+  };
+
+  const isAIResponseEmpty = () => {
+    if (!gatewayResult) return false;
+    const answer = extractGatewayAnswer(gatewayResult);
+    return !answer || answer.trim() === '' || answer.includes('No code') || answer.includes('no code');
   };
 
   return (
     <div className="space-y-6">
+      {/* Example Requests */}
+      <Card className="shadow-card border-card-border">
+        <Collapsible>
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="hover:bg-muted/50 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Code className="h-5 w-5 text-primary" />
+                  Example requests
+                </span>
+                <ChevronDown className="h-4 w-4" />
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <div className="grid gap-3">
+                {examples.map((example, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="justify-start h-auto p-4"
+                    onClick={() => handleExampleClick(example.content)}
+                  >
+                    <example.icon className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="text-left">{example.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
       {/* Scan Card */}
       <Card className="shadow-card border-card-border">
         <CardHeader>
@@ -218,6 +329,7 @@ export default function Home() {
           </div>
 
           <Button
+            ref={scanButtonRef}
             onClick={handleScan}
             disabled={!text.trim() || isScanning}
             className="w-full"
@@ -236,15 +348,15 @@ export default function Home() {
             )}
           </Button>
 
-          {scanResult && (
+          {(scanResult || isScanning || isSending) && (
             <div className="space-y-4 pt-4 border-t border-card-border">
               <div className="flex justify-center">
-                <StatusPill status={scanResult.ok ? 'safe' : 'blocked'} size="lg">
-                  {scanResult.ok ? 'Safe' : 'Blocked'}
+                <StatusPill status={getStatusType()} size="lg">
+                  {getStatusText()}
                 </StatusPill>
               </div>
 
-              {scanResult.reasons.length > 0 && (
+              {scanResult && scanResult.reasons && scanResult.reasons.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Reasons:</h4>
                   <div className="flex flex-wrap gap-2">
@@ -255,7 +367,7 @@ export default function Home() {
                 </div>
               )}
 
-              {!scanResult.ok && Object.keys(scanResult.redactions).length > 0 && (
+              {scanResult && !scanResult.ok && scanResult.redactions && Object.keys(scanResult.redactions).length > 0 && (
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
                     <ChevronDown className="h-4 w-4" />
@@ -270,8 +382,20 @@ export default function Home() {
                         text={redactedText}
                         language="en"
                       />
-                      <Button variant="default" size="sm" onClick={handleSendRedacted}>
-                        Send redacted
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        onClick={handleSendRedacted}
+                        disabled={isSending}
+                      >
+                        {isSending ? (
+                          <>
+                            <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send redacted'
+                        )}
                       </Button>
                     </div>
                   </CollapsibleContent>
@@ -286,11 +410,17 @@ export default function Home() {
                 <CardTitle className="text-lg">AI Response</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-muted p-4 rounded-md">
-                  <pre className="whitespace-pre-wrap text-sm">
-                    {extractGatewayAnswer(gatewayResult)}
-                  </pre>
-                </div>
+                {isAIResponseEmpty() ? (
+                  <div className="text-center p-6 text-muted-foreground">
+                    <p>No code received. Paste a code snippet above and press Scan.</p>
+                  </div>
+                ) : (
+                  <div className="bg-muted p-4 rounded-md">
+                    <pre className="whitespace-pre-wrap text-sm">
+                      {extractGatewayAnswer(gatewayResult)}
+                    </pre>
+                  </div>
+                )}
                 
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">

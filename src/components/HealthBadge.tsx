@@ -1,5 +1,6 @@
 import { StatusPill } from './StatusPill';
-import { useI18n } from '@/hooks/useI18n';
+import { AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HealthBadgeProps {
   isOnline: boolean;
@@ -7,11 +8,23 @@ interface HealthBadgeProps {
 }
 
 export function HealthBadge({ isOnline, language }: HealthBadgeProps) {
-  const { t } = useI18n(language);
-
   return (
-    <StatusPill status={isOnline ? 'safe' : 'blocked'} size="sm">
-      {isOnline ? t('online') : t('offline')}
-    </StatusPill>
+    <div className="flex items-center gap-2">
+      <StatusPill status="safe" size="sm">
+        Online
+      </StatusPill>
+      {!isOnline && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Health check failed. Verify CORS in Konnect.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
   );
 }

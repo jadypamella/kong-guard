@@ -119,12 +119,14 @@ DB_PASSWORD=AnotherSecret123`
 
   const getStatusText = () => {
     if (isScanning) return 'Scanning...';
+    if (gatewayResult?.error) return 'Error';
     if (scanResult?.ok) return 'Analyzed';
     return null;
   };
 
   const getStatusType = () => {
     if (isScanning) return 'neutral';
+    if (gatewayResult?.error) return 'error';
     if (scanResult?.ok) return 'safe';
     return 'neutral';
   };

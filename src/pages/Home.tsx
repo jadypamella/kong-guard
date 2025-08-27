@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Scan, RefreshCw, ChevronDown } from 'lucide-react';
 import { StatusPill } from '@/components/StatusPill';
-import { CopyButton } from '@/components/CopyButton';
+import { KongGuardResponse } from '@/components/KongGuardResponse';
 import { useSettings } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/use-toast';
 import { callGatewayTemplate, extractGatewayAnswer, type GatewayResponse } from '@/lib/gateway';
@@ -119,7 +119,7 @@ DB_PASSWORD=AnotherSecret123`
 
   const getStatusText = () => {
     if (isScanning) return 'Scanning...';
-    if (scanResult?.ok) return 'Success';
+    if (scanResult?.ok) return 'Allowed';
     return null;
   };
 
@@ -180,7 +180,7 @@ DB_PASSWORD=AnotherSecret123`
             )}
           </Button>
 
-          {(scanResult || isScanning) && (
+          {(scanResult || isScanning) && !isScanning && (
             <div className="space-y-4 pt-4 border-t border-card-border">
               <div className="flex justify-center">
                 <StatusPill status={getStatusType()} size="lg">
@@ -190,38 +190,20 @@ DB_PASSWORD=AnotherSecret123`
             </div>
           )}
 
-          {gatewayResult && (
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-lg">AI Response</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isAIResponseEmpty() ? (
-                  <div className="text-center p-6 text-muted-foreground">
-                    <p>No code received. Paste a code snippet above and press Scan.</p>
-                  </div>
-                ) : (
-                  <div className="bg-muted p-4 rounded-md">
-                    <pre className="whitespace-pre-wrap text-sm">
-                      {extractGatewayAnswer(gatewayResult)}
-                    </pre>
-                  </div>
-                )}
-                
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">
-                    <ChevronDown className="h-4 w-4" />
-                    Raw Gateway Response
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3">
-                    <pre className="bg-muted p-3 rounded-md text-xs overflow-auto">
-                      {JSON.stringify(gatewayResult, null, 2)}
-                    </pre>
-                  </CollapsibleContent>
-                </Collapsible>
-              </CardContent>
-            </Card>
+          {isScanning && (
+            <div className="space-y-4 pt-4 border-t border-card-border">
+              <div className="flex justify-center">
+                <StatusPill status="neutral" size="lg">
+                  Scanning...
+                </StatusPill>
+              </div>
+            </div>
           )}
+
+          <KongGuardResponse 
+            gatewayResult={gatewayResult} 
+            isEmpty={isAIResponseEmpty()} 
+          />
 
           <Collapsible>
             <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary">

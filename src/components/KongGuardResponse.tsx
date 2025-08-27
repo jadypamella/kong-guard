@@ -57,14 +57,15 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
       return 'high';
     }
     if (lowercaseText.includes('medium risk') || lowercaseText.includes('warning') || 
-        lowercaseText.includes('suggestion') || lowercaseText.includes('consider')) {
+        lowercaseText.includes('suggestion') || lowercaseText.includes('consider') ||
+        bulletPoints.length > 0) {
       return 'medium';
     }
     if (lowercaseText.includes('no issues') || lowercaseText.includes('looks good') || 
-        lowercaseText.includes('no problems') || bulletPoints.length === 0) {
+        lowercaseText.includes('no problems')) {
       return 'low';
     }
-    return bulletPoints.length > 0 ? 'medium' : 'low';
+    return 'none';
   };
 
   const severity = getSeverity();
@@ -121,13 +122,15 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
         <CardTitle className="text-lg">KongGuard Response</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Summary Bar */}
-        <div className={`p-4 rounded-lg border ${summaryConfig.className}`}>
-          <div className="flex items-center gap-3">
-            <span className={summaryConfig.iconColor}>{summaryConfig.icon}</span>
-            <span className="font-bold">{summaryConfig.title}</span>
+        {/* Summary Bar - only show if there are actual issues */}
+        {severity !== 'none' && (
+          <div className={`p-4 rounded-lg border ${summaryConfig.className}`}>
+            <div className="flex items-center gap-3">
+              <span className={summaryConfig.iconColor}>{summaryConfig.icon}</span>
+              <span className="font-bold">{summaryConfig.title}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Bullet Points Checklist */}
         {bulletPoints.length > 0 && (

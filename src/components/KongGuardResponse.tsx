@@ -41,6 +41,25 @@ export function KongGuardResponse({ gatewayResult, isEmpty }: KongGuardResponseP
 
   if (!gatewayResult) return null;
 
+  // Check for bad request error
+  if (gatewayResult.error && gatewayResult.error.message === 'bad request') {
+    return (
+      <Card className="mt-4 border-red-200">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 p-4 rounded-lg border bg-red-50 border-red-200">
+            <XCircle className="h-5 w-5 text-red-600" />
+            <div>
+              <p className="font-bold text-red-600">Security Warning</p>
+              <p className="text-sm text-red-700 mt-1">
+                There is sensitive information in this code and you shouldn't send it to LLMs.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const responseText = extractGatewayAnswer(gatewayResult);
   
   // Parse response for analysis

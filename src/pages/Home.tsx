@@ -258,24 +258,17 @@ DB_PASSWORD=AnotherSecret123`
                     Use Example
                   </Button>
                 </div>
-                <div className="relative">
-                  <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
+                <div className="bg-muted p-3 rounded-md">
+                  <pre className="text-xs overflow-auto">
 {`curl -X POST "${settings.gatewayUrl}/${settings.gatewayPath}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "messages": [
-      { "role": "system", "content": "You are a mathematician" },
-      { "role": "user", "content": "What is 1 + 1?" }
-    ]
+    "messages": "{template://CodeStanderdRule}",
+    "properties": {
+      "code": "What is 1 + 1?"
+    }
   }'`}
                   </pre>
-                  <div className="absolute top-2 right-2">
-                    <CopyButton
-                      text={`curl -X POST "${settings.gatewayUrl}/${settings.gatewayPath}" -H "Content-Type: application/json" -d '{"messages":[{"role":"system","content":"You are a mathematician"},{"role":"user","content":"What is 1 + 1?"}]}'`}
-                      language="en"
-                      variant="ghost"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -290,26 +283,17 @@ DB_PASSWORD=AnotherSecret123`
                     Use Example
                   </Button>
                 </div>
-                <div className="relative">
-                  <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
+                <div className="bg-muted p-3 rounded-md">
+                  <pre className="text-xs overflow-auto">
 {`await fetch('${settings.gatewayUrl}/${settings.gatewayPath}', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    messages: [
-      { role: 'system', content: 'You are a mathematician' },
-      { role: 'user', content: 'What is 1 + 1?' }
-    ]
+    messages: "{template://CodeStanderdRule}",
+    properties: { code: "What is 1 + 1?" }
   })
 }).then(r => r.json())`}
                   </pre>
-                  <div className="absolute top-2 right-2">
-                    <CopyButton
-                      text={`await fetch('${settings.gatewayUrl}/${settings.gatewayPath}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'system', content: 'You are a mathematician' }, { role: 'user', content: 'What is 1 + 1?' }] }) }).then(r => r.json())`}
-                      language="en"
-                      variant="ghost"
-                    />
-                  </div>
                 </div>
               </div>
             </CollapsibleContent>

@@ -16,6 +16,34 @@ import { useToast } from '@/hooks/use-toast';
 import { scanText, getLogs, type ScanResponse, type LogEntry } from '@/lib/api';
 import { callGateway, extractGatewayAnswer, type GatewayResponse } from '@/lib/gateway';
 
+// Local scanner implementation
+const scanTextLocal = (text: string): ScanResponse => {
+  const reasons: string[] = [];
+  const redactions: Record<string, string> = {};
+  
+  const rules = [
+    { name: "Potential password", regex: /(password|passwd|pwd)\s*[:=]\s*["']?[^"'\n]{4,}/i },
+    { name: "JWT like token", regex: /\beyJ[a-zA-Z0-9_-]+?\.[a-zA-Z0-9_-]+?\.[a-zA-Z0-9_-]+/ },
+    { name: "AWS key id", regex: /\bAKIA[0-9A-Z]{16}\b/ },
+    { name: "AWS secret", regex: /\b[A-Za-z0-9\/+=]{40}\b/ },
+    { name: "Private key block", regex: /BEGIN\s+PRIVATE\s+KEY[\s\S]+END\s+PRIVATE\s+KEY/ }
+  ];
+
+  for (const rule of rules) {
+    const match = text.match(rule.regex);
+    if (match) {
+      reasons.push(rule.name);
+      redactions[match[0]] = "***redacted***";
+    }
+  }
+
+  return {
+    ok: reasons.length === 0,
+    reasons,
+    redactions,
+  };
+};
+
 export default function Home() {
   const { settings, updateSettings } = useSettings();
   const { t } = useI18n(settings.language);
@@ -29,8 +57,14 @@ export default function Home() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
-  // Load logs
+  // Load logs only if backend is configured
   const loadLogs = async () => {
+    if (!settings.baseUrl) {
+      setLogs([]);
+      setIsLoadingLogs(false);
+      return;
+    }
+
     try {
       const logData = await getLogs(settings.baseUrl, settings.mock);
       setLogs(logData);
@@ -46,9 +80,11 @@ export default function Home() {
 
   useEffect(() => {
     loadLogs();
-    // Poll logs every 5 seconds
-    const interval = setInterval(loadLogs, 5000);
-    return () => clearInterval(interval);
+    // Poll logs every 5 seconds if backend is configured
+    if (settings.baseUrl) {
+      const interval = setInterval(loadLogs, 5000);
+      return () => clearInterval(interval);
+    }
   }, [settings.baseUrl, settings.mock]);
 
   const handleScan = async () => {
@@ -64,7 +100,11 @@ export default function Home() {
         scanTarget = `${text} ${settings.contextSecret}`;
       }
 
-      const result = await scanText(settings.baseUrl, { text: scanTarget, team: team || undefined }, settings.mock);
+      // Use local scanner with scanTarget
+      const result = settings.baseUrl 
+        ? await scanText(settings.baseUrl, { text: scanTarget, team: team || undefined }, settings.mock)
+        : scanTextLocal(scanTarget);
+      
       setScanResult(result);
       
       // If scan passes, call gateway with original text
@@ -77,7 +117,11 @@ export default function Home() {
             settings.contextSecret,
             settings.includeContextSecret
           );
-          setGatewayResult(gatewayResponse);
+          setGatewayResult(gatewayResponse.data);
+          
+          toast({
+            title: 'Scan complete',
+          });
         } catch (gatewayError: any) {
           toast({
             title: 'Gateway Error',
@@ -87,14 +131,16 @@ export default function Home() {
             variant: 'destructive',
           });
         }
+      } else {
+        toast({
+          title: 'Scan complete',
+        });
       }
       
-      toast({
-        title: t('scan_complete'),
-      });
-      
-      // Reload logs after scan
-      loadLogs();
+      // Reload logs after scan if backend is configured
+      if (settings.baseUrl) {
+        loadLogs();
+      }
     } catch (error) {
       toast({
         title: t('service_not_reachable'),
@@ -111,14 +157,18 @@ export default function Home() {
     setIsScanning(true);
     try {
       const redactedText = applyRedactions(text, scanResult.redactions);
+      const redactedSecret = settings.contextSecret 
+        ? applyRedactions(settings.contextSecret, scanResult.redactions)
+        : settings.contextSecret;
+        
       const gatewayResponse = await callGateway(
         settings.gatewayUrl,
         settings.gatewayPath,
         redactedText,
-        settings.contextSecret,
+        redactedSecret,
         settings.includeContextSecret
       );
-      setGatewayResult(gatewayResponse);
+      setGatewayResult(gatewayResponse.data);
       toast({
         title: 'Redacted text sent successfully',
       });
@@ -327,47 +377,6 @@ export default function Home() {
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-4 mt-3">
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">cURL</h4>
-                <div className="relative">
-                  <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
-{`curl -X POST ${settings.baseUrl}/scan \\
-  -H "Content-Type: application/json" \\
-  -d '{"text": "your prompt here", "team": "optional"}'`}
-                  </pre>
-                  <div className="absolute top-2 right-2">
-                    <CopyButton
-                      text={`curl -X POST ${settings.baseUrl}/scan -H "Content-Type: application/json" -d '{"text": "your prompt here", "team": "optional"}'`}
-                      language={settings.language}
-                      variant="ghost"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">JavaScript</h4>
-                <div className="relative">
-                  <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
-{`fetch('${settings.baseUrl}/scan', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    text: 'your prompt here',
-    team: 'optional'
-  })
-}).then(res => res.json())`}
-                  </pre>
-                  <div className="absolute top-2 right-2">
-                    <CopyButton
-                      text={`fetch('${settings.baseUrl}/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'your prompt here', team: 'optional' }) }).then(res => res.json())`}
-                      language={settings.language}
-                      variant="ghost"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
                 <h4 className="text-sm font-medium">Gateway - cURL</h4>
                 <div className="relative">
                   <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
@@ -414,6 +423,51 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+
+              {settings.baseUrl && (
+                <>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Backend - cURL</h4>
+                    <div className="relative">
+                      <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
+{`curl -X POST ${settings.baseUrl}/scan \\
+  -H "Content-Type: application/json" \\
+  -d '{"text": "your prompt here", "team": "optional"}'`}
+                      </pre>
+                      <div className="absolute top-2 right-2">
+                        <CopyButton
+                          text={`curl -X POST ${settings.baseUrl}/scan -H "Content-Type: application/json" -d '{"text": "your prompt here", "team": "optional"}'`}
+                          language={settings.language}
+                          variant="ghost"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Backend - JavaScript</h4>
+                    <div className="relative">
+                      <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
+{`fetch('${settings.baseUrl}/scan', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    text: 'your prompt here',
+    team: 'optional'
+  })
+}).then(res => res.json())`}
+                      </pre>
+                      <div className="absolute top-2 right-2">
+                        <CopyButton
+                          text={`fetch('${settings.baseUrl}/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'your prompt here', team: 'optional' }) }).then(res => res.json())`}
+                          language={settings.language}
+                          variant="ghost"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </CollapsibleContent>
           </Collapsible>
         </CardContent>
@@ -458,66 +512,90 @@ export default function Home() {
       </Card>
 
       {/* Logs Card */}
-      <Card className="shadow-card border-card-border">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>{t('logs')}</CardTitle>
-          <Button variant="ghost" size="sm" onClick={loadLogs}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-card-border">
-                  <th className="text-left p-2 text-sm font-medium text-muted-foreground">
-                    {t('time')}
-                  </th>
-                  <th className="text-left p-2 text-sm font-medium text-muted-foreground">
-                    {t('status')}
-                  </th>
-                  <th className="text-left p-2 text-sm font-medium text-muted-foreground">
-                    {t('reasons')}
-                  </th>
-                  <th className="text-left p-2 text-sm font-medium text-muted-foreground">
-                    {t('length')}
-                  </th>
-                  <th className="text-left p-2 text-sm font-medium text-muted-foreground">
-                    {t('team')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log, index) => (
-                  <tr key={index} className="border-b border-card-border/50">
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {new Date(log.ts).toLocaleString()}
-                    </td>
-                    <td className="p-2">
-                      <StatusPill status={log.ok ? 'safe' : 'blocked'} size="sm">
-                        {log.ok ? t('safe') : t('blocked')}
-                      </StatusPill>
-                    </td>
-                    <td className="p-2">
-                      <div className="flex flex-wrap gap-1">
-                        {log.reasons.map((reason, reasonIndex) => (
-                          <ReasonBadge key={reasonIndex} reason={reason} />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {log.length}
-                    </td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {log.team || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {settings.baseUrl ? (
+        <Card className="shadow-card border-card-border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle>{t('logs')}</CardTitle>
+            <Button variant="ghost" size="sm" onClick={loadLogs} disabled={isLoadingLogs}>
+              <RefreshCw className={`h-4 w-4 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {isLoadingLogs ? (
+              <div className="flex items-center justify-center p-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : logs.length === 0 ? (
+              <div className="text-center text-muted-foreground p-8">
+                No logs available
+              </div>
+            ) : (
+              <div className="overflow-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-card-border">
+                      <th className="text-left p-2 text-sm font-medium text-muted-foreground">
+                        {t('time')}
+                      </th>
+                      <th className="text-left p-2 text-sm font-medium text-muted-foreground">
+                        {t('status')}
+                      </th>
+                      <th className="text-left p-2 text-sm font-medium text-muted-foreground">
+                        {t('reasons')}
+                      </th>
+                      <th className="text-left p-2 text-sm font-medium text-muted-foreground">
+                        {t('length')}
+                      </th>
+                      <th className="text-left p-2 text-sm font-medium text-muted-foreground">
+                        {t('team')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log, index) => (
+                      <tr key={index} className="border-b border-card-border/50">
+                        <td className="p-2 text-sm text-muted-foreground">
+                          {new Date(log.ts).toLocaleString()}
+                        </td>
+                        <td className="p-2">
+                          <StatusPill status={log.ok ? 'safe' : 'blocked'} size="sm">
+                            {log.ok ? t('safe') : t('blocked')}
+                          </StatusPill>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex flex-wrap gap-1">
+                            {log.reasons.map((reason, reasonIndex) => (
+                              <ReasonBadge key={reasonIndex} reason={reason} />
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-2 text-sm text-muted-foreground">
+                          {log.length}
+                        </td>
+                        <td className="p-2 text-sm text-muted-foreground">
+                          {log.team || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-card border-card-border">
+          <CardHeader>
+            <CardTitle>{t('logs')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center text-muted-foreground p-8">
+              <p className="text-sm">Backend not configured</p>
+              <p className="text-xs mt-1">Configure a backend URL in Settings to view logs</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

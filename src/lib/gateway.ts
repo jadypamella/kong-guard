@@ -24,41 +24,39 @@ export interface GatewayResponse {
 export async function callGateway(
   gatewayUrl: string,
   gatewayPath: string,
-  textContent: string,
-  contextSecret?: string,
-  includeContextSecret: boolean = false
-): Promise<GatewayResponse> {
+  userText: string,
+  contextSecret: string,
+  includeSecret: boolean
+): Promise<{ ok: boolean; status: number; data: any; text: string }> {
   const messages: GatewayMessage[] = [
     { role: 'system', content: 'You are KongGuard' },
-    { role: 'user', content: textContent }
+    { role: 'user', content: userText },
   ];
 
-  if (includeContextSecret && contextSecret) {
+  if (includeSecret && contextSecret) {
     messages.push({ role: 'user', content: `context secret: ${contextSecret}` });
   }
 
-  const response = await fetch(`${gatewayUrl}/${gatewayPath}`, {
+  const resp = await fetch(`${gatewayUrl}/${gatewayPath}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ messages }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages })
   });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`Gateway returned ${response.status}${errorText ? ': ' + errorText.slice(0, 100) : ''}`);
-  }
+  const data = await resp.json().catch(() => ({} as any));
 
-  return response.json();
+  const text =
+    data?.choices?.[0]?.message?.content ??
+    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') ??
+    JSON.stringify(data);
+
+  return { ok: resp.ok, status: resp.status, data, text };
 }
 
 export async function checkGatewayHealth(gatewayUrl: string, gatewayPath: string): Promise<boolean> {
   try {
-    const response = await fetch(`${gatewayUrl}/${gatewayPath}`, {
-      method: 'OPTIONS',
-    });
-    return response.status >= 200 && response.status <= 204;
+    const res = await fetch(`${gatewayUrl}/${gatewayPath}`, { method: 'OPTIONS' });
+    return res.ok || res.status === 204 || res.status === 405;
   } catch {
     return false;
   }

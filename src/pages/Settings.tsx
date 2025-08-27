@@ -28,6 +28,7 @@ export default function Settings() {
   const [isOnline, setIsOnline] = useState(false);
   const [isGatewayOnline, setIsGatewayOnline] = useState(false);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [gatewayHealthError, setGatewayHealthError] = useState<string | null>(null);
 
   const checkServiceHealth = async () => {
     if (mock) {
@@ -50,8 +51,14 @@ export default function Settings() {
     try {
       const online = await checkGatewayHealth(gatewayUrl, gatewayPath);
       setIsGatewayOnline(online);
-    } catch {
+      setGatewayHealthError(online ? null : 'Connection failed');
+    } catch (error: any) {
       setIsGatewayOnline(false);
+      if (error.message?.includes('CORS') || error.name === 'TypeError') {
+        setGatewayHealthError('CORS');
+      } else {
+        setGatewayHealthError('Connection failed');
+      }
     }
   };
 
@@ -65,7 +72,8 @@ export default function Settings() {
     return () => clearInterval(interval);
   }, [gatewayUrl, gatewayPath]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsSaving(true);
     updateSettings({
       baseUrl,
       mock,
@@ -76,20 +84,20 @@ export default function Settings() {
       contextSecret,
     });
     
+    // Re-run health checks
+    await Promise.all([
+      checkServiceHealth(),
+      checkGatewayServiceHealth(),
+    ]);
+    
     toast({
       title: 'Settings saved',
       description: 'Your settings have been updated.',
     });
+    setIsSaving(false);
   };
 
-  const hasChanges = 
-    baseUrl !== settings.baseUrl ||
-    mock !== settings.mock ||
-    language !== settings.language ||
-    gatewayUrl !== settings.gatewayUrl ||
-    gatewayPath !== settings.gatewayPath ||
-    includeContextSecret !== settings.includeContextSecret ||
-    contextSecret !== settings.contextSecret;
+  const [isSaving, setIsSaving] = useState(false);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -216,15 +224,20 @@ export default function Settings() {
                   Current AI gateway connectivity
                 </p>
               </div>
-              <HealthBadge isOnline={isGatewayOnline} language={language} />
+              <div className="flex flex-col items-end gap-1">
+                <HealthBadge isOnline={isGatewayOnline} language={language} />
+                {!isGatewayOnline && gatewayHealthError === 'CORS' && (
+                  <p className="text-xs text-muted-foreground text-right max-w-xs">
+                    Enable CORS plugin for the service behind this route in Konnect. Allow origin http://localhost:8081 with methods POST and OPTIONS and header Content-Type.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
-          {hasChanges && (
-            <Button onClick={handleSave} className="w-full">
-              Apply Changes
-            </Button>
-          )}
+          <Button onClick={handleSave} disabled={isSaving} className="w-full">
+            {isSaving ? 'Saving...' : 'Apply Changes'}
+          </Button>
         </CardContent>
       </Card>
     </div>

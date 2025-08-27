@@ -11,9 +11,9 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  baseUrl: 'http://localhost:8000',
+  baseUrl: '',
   language: 'en',
-  mock: true,
+  mock: false,
   gatewayUrl: 'https://kong-f156c191deeusgnly.kongcloud.dev',
   gatewayPath: 'validate-code',
   includeContextSecret: false,

@@ -72,7 +72,7 @@ export default function Home() {
 
   const examples = [
     {
-      label: 'C Sharp class',
+      label: 'C#',
       content: `using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -91,7 +91,7 @@ public class Myclass
 }`
     },
     {
-      label: 'Python file with secrets',
+      label: 'Python',
       content: `import os
 DB_URL = "postgres://admin:SuperSecretP@ssw0rd@db.example.com:5432/prod"
 REDIS_URL = "redis://default:TopSecret123@cache.example.com:6379"
@@ -100,7 +100,7 @@ def connect():
     pass`
     },
     {
-      label: 'Repo file with leaked env',
+      label: '.env',
       content: `# .env from repo
 OPENAI_API_KEY=sk_FAKE1234567890
 AWS_ACCESS_KEY_ID=AKIAFAKE1234567890
@@ -159,17 +159,6 @@ DB_PASSWORD=AnotherSecret123`
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Context secret (optional)
-            </label>
-            <Input
-              type="password"
-              value={settings.contextSecret}
-              onChange={(e) => updateSettings({ contextSecret: e.target.value })}
-              placeholder="Enter context secret"
-            />
-          </div>
 
           <Button
             ref={scanButtonRef}
@@ -259,7 +248,16 @@ DB_PASSWORD=AnotherSecret123`
               ))}
               
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">cURL</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">cURL</h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleExampleClick(`curl -X POST "${settings.gatewayUrl}/${settings.gatewayPath}" -H "Content-Type: application/json" -d '{"messages":"{template://CodeStanderdRule}","properties":{"code":"What is 1 + 1?"}}'`)}
+                  >
+                    Use Example
+                  </Button>
+                </div>
                 <div className="relative">
                   <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
 {`curl -X POST "${settings.gatewayUrl}/${settings.gatewayPath}" \\
@@ -282,7 +280,16 @@ DB_PASSWORD=AnotherSecret123`
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">JavaScript</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">JavaScript</h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleExampleClick(`await fetch('${settings.gatewayUrl}/${settings.gatewayPath}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: "{template://CodeStanderdRule}", properties: { code: "What is 1 + 1?" } }) }).then(r => r.json())`)}
+                  >
+                    Use Example
+                  </Button>
+                </div>
                 <div className="relative">
                   <pre className="bg-muted p-3 rounded-md text-xs overflow-auto pr-12">
 {`await fetch('${settings.gatewayUrl}/${settings.gatewayPath}', {
